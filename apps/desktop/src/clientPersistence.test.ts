@@ -61,6 +61,7 @@ const clientSettings: ClientSettings = {
   sidebarProjectSortOrder: "manual",
   sidebarThreadSortOrder: "created_at",
   timestampFormat: "24-hour",
+  terminalLayout: "floating",
 };
 
 const savedRegistryRecord: PersistedSavedEnvironmentRecord = {

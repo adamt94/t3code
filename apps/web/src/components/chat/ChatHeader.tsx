@@ -3,6 +3,7 @@ import {
   type EditorId,
   type ProjectScript,
   type ResolvedKeybindingsConfig,
+  type TerminalLayout,
   type ThreadId,
 } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime";
@@ -31,6 +32,7 @@ interface ChatHeaderProps {
   availableEditors: ReadonlyArray<EditorId>;
   terminalAvailable: boolean;
   terminalOpen: boolean;
+  terminalLayout: TerminalLayout;
   terminalToggleShortcutLabel: string | null;
   diffToggleShortcutLabel: string | null;
   gitCwd: string | null;
@@ -57,6 +59,7 @@ export const ChatHeader = memo(function ChatHeader({
   availableEditors,
   terminalAvailable,
   terminalOpen,
+  terminalLayout,
   terminalToggleShortcutLabel,
   diffToggleShortcutLabel,
   gitCwd,
@@ -68,6 +71,9 @@ export const ChatHeader = memo(function ChatHeader({
   onToggleTerminal,
   onToggleDiff,
 }: ChatHeaderProps) {
+  const terminalSurfaceLabel =
+    terminalLayout === "floating" ? "terminal window" : "terminal drawer";
+
   return (
     <div className="@container/header-actions flex min-w-0 flex-1 items-center gap-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
@@ -122,7 +128,7 @@ export const ChatHeader = memo(function ChatHeader({
                 className="shrink-0"
                 pressed={terminalOpen}
                 onPressedChange={onToggleTerminal}
-                aria-label="Toggle terminal drawer"
+                aria-label={`Toggle ${terminalSurfaceLabel}`}
                 variant="outline"
                 size="xs"
                 disabled={!terminalAvailable}
@@ -135,8 +141,8 @@ export const ChatHeader = memo(function ChatHeader({
             {!terminalAvailable
               ? "Terminal is unavailable until this thread has an active project."
               : terminalToggleShortcutLabel
-                ? `Toggle terminal drawer (${terminalToggleShortcutLabel})`
-                : "Toggle terminal drawer"}
+                ? `Toggle ${terminalSurfaceLabel} (${terminalToggleShortcutLabel})`
+                : `Toggle ${terminalSurfaceLabel}`}
           </TooltipPopup>
         </Tooltip>
         <Tooltip>

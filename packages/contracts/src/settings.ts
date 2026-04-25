@@ -30,6 +30,10 @@ export const SidebarProjectGroupingMode = Schema.Literals([
 export type SidebarProjectGroupingMode = typeof SidebarProjectGroupingMode.Type;
 export const DEFAULT_SIDEBAR_PROJECT_GROUPING_MODE: SidebarProjectGroupingMode = "repository";
 
+export const TerminalLayout = Schema.Literals(["docked", "floating"]);
+export type TerminalLayout = typeof TerminalLayout.Type;
+export const DEFAULT_TERMINAL_LAYOUT: TerminalLayout = "docked";
+
 export const ClientSettingsSchema = Schema.Struct({
   autoOpenPlanSidebar: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   confirmThreadArchive: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
@@ -56,6 +60,9 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   timestampFormat: TimestampFormat.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TIMESTAMP_FORMAT)),
+  ),
+  terminalLayout: TerminalLayout.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_TERMINAL_LAYOUT)),
   ),
 });
 export type ClientSettings = typeof ClientSettingsSchema.Type;
@@ -263,5 +270,6 @@ export const ClientSettingsPatch = Schema.Struct({
   sidebarProjectSortOrder: Schema.optionalKey(SidebarProjectSortOrder),
   sidebarThreadSortOrder: Schema.optionalKey(SidebarThreadSortOrder),
   timestampFormat: Schema.optionalKey(TimestampFormat),
+  terminalLayout: Schema.optionalKey(TerminalLayout),
 });
 export type ClientSettingsPatch = typeof ClientSettingsPatch.Type;
