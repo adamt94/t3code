@@ -14,6 +14,7 @@ import { terminalRunningSubprocessFromEvent } from "./terminalActivity";
 import {
   DEFAULT_THREAD_TERMINAL_HEIGHT,
   DEFAULT_THREAD_TERMINAL_ID,
+  LAZYGIT_TERMINAL_ID,
   MAX_TERMINALS_PER_GROUP,
   type ThreadTerminalGroup,
 } from "./types";
@@ -41,6 +42,7 @@ export interface TerminalEventEntry {
 const TERMINAL_STATE_STORAGE_KEY = "t3code:terminal-state:v1";
 const EMPTY_TERMINAL_EVENT_ENTRIES: ReadonlyArray<TerminalEventEntry> = [];
 const MAX_TERMINAL_EVENT_BUFFER = 200;
+const AUXILIARY_TERMINAL_IDS = new Set([LAZYGIT_TERMINAL_ID]);
 
 interface PersistedTerminalStateStoreState {
   terminalStateByThreadKey?: Record<string, ThreadTerminalState>;
@@ -53,9 +55,12 @@ export function migratePersistedTerminalStateStoreState(
   if (version === 1 && persistedState && typeof persistedState === "object") {
     const candidate = persistedState as PersistedTerminalStateStoreState;
     const nextTerminalStateByThreadKey = Object.fromEntries(
-      Object.entries(candidate.terminalStateByThreadKey ?? {}).filter(([threadKey]) =>
-        parseScopedThreadKey(threadKey),
-      ),
+      Object.entries(candidate.terminalStateByThreadKey ?? {})
+        .filter(([threadKey]) => parseScopedThreadKey(threadKey))
+        .map(([threadKey, terminalState]) => [
+          threadKey,
+          normalizeThreadTerminalState(terminalState),
+        ]),
     );
     return { terminalStateByThreadKey: nextTerminalStateByThreadKey };
   }
@@ -67,7 +72,13 @@ function createTerminalStateStorage() {
 }
 
 function normalizeTerminalIds(terminalIds: string[]): string[] {
-  const ids = [...new Set(terminalIds.map((id) => id.trim()).filter((id) => id.length > 0))];
+  const ids = [
+    ...new Set(
+      terminalIds
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0 && !AUXILIARY_TERMINAL_IDS.has(id)),
+    ),
+  ];
   return ids.length > 0 ? ids : [DEFAULT_THREAD_TERMINAL_ID];
 }
 
@@ -259,6 +270,10 @@ function isDefaultThreadTerminalState(state: ThreadTerminalState): boolean {
 
 function isValidTerminalId(terminalId: string): boolean {
   return terminalId.trim().length > 0;
+}
+
+function isAuxiliaryTerminalId(terminalId: string): boolean {
+  return AUXILIARY_TERMINAL_IDS.has(terminalId.trim());
 }
 
 function terminalThreadKey(threadRef: ScopedThreadRef): string {
@@ -516,7 +531,8 @@ export function selectThreadTerminalState(
   if (!threadRef || threadRef.threadId.length === 0) {
     return getDefaultThreadTerminalState();
   }
-  return terminalStateByThreadKey[terminalThreadKey(threadRef)] ?? getDefaultThreadTerminalState();
+  const state = terminalStateByThreadKey[terminalThreadKey(threadRef)];
+  return state ? normalizeThreadTerminalState(state) : getDefaultThreadTerminalState();
 }
 
 function updateTerminalStateByThreadKey(
@@ -691,7 +707,9 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
             let nextTerminalStateByThreadKey = state.terminalStateByThreadKey;
             let nextTerminalLaunchContextByThreadKey = state.terminalLaunchContextByThreadKey;
 
-            if (event.type === "started" || event.type === "restarted") {
+            const auxiliaryTerminal = isAuxiliaryTerminalId(event.terminalId);
+
+            if (!auxiliaryTerminal && (event.type === "started" || event.type === "restarted")) {
               nextTerminalStateByThreadKey = updateTerminalStateByThreadKey(
                 nextTerminalStateByThreadKey,
                 threadRef,
@@ -712,7 +730,7 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
             }
 
             const hasRunningSubprocess = terminalRunningSubprocessFromEvent(event);
-            if (hasRunningSubprocess !== null) {
+            if (!auxiliaryTerminal && hasRunningSubprocess !== null) {
               nextTerminalStateByThreadKey = updateTerminalStateByThreadKey(
                 nextTerminalStateByThreadKey,
                 threadRef,
@@ -840,7 +858,12 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
       storage: createJSONStorage(createTerminalStateStorage),
       migrate: migratePersistedTerminalStateStoreState,
       partialize: (state) => ({
-        terminalStateByThreadKey: state.terminalStateByThreadKey,
+        terminalStateByThreadKey: Object.fromEntries(
+          Object.entries(state.terminalStateByThreadKey).map(([threadKey, terminalState]) => [
+            threadKey,
+            normalizeThreadTerminalState(terminalState),
+          ]),
+        ),
       }),
     },
   ),

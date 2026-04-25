@@ -33,6 +33,15 @@ export const DEFAULT_SIDEBAR_PROJECT_GROUPING_MODE: SidebarProjectGroupingMode =
 export const TerminalLayout = Schema.Literals(["docked", "floating"]);
 export type TerminalLayout = typeof TerminalLayout.Type;
 export const DEFAULT_TERMINAL_LAYOUT: TerminalLayout = "docked";
+const TerminalLayoutSetting = Schema.Union([TerminalLayout, Schema.Literal("tabs")]).pipe(
+  Schema.decodeTo(
+    TerminalLayout,
+    SchemaTransformation.transformOrFail({
+      decode: (value) => Effect.succeed(value === "tabs" ? DEFAULT_TERMINAL_LAYOUT : value),
+      encode: (value) => Effect.succeed(value),
+    }),
+  ),
+);
 
 export const ClientSettingsSchema = Schema.Struct({
   autoOpenPlanSidebar: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
@@ -61,9 +70,10 @@ export const ClientSettingsSchema = Schema.Struct({
   timestampFormat: TimestampFormat.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TIMESTAMP_FORMAT)),
   ),
-  terminalLayout: TerminalLayout.pipe(
+  terminalLayout: TerminalLayoutSetting.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TERMINAL_LAYOUT)),
   ),
+  terminalTabsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
 });
 export type ClientSettings = typeof ClientSettingsSchema.Type;
 
@@ -271,5 +281,6 @@ export const ClientSettingsPatch = Schema.Struct({
   sidebarThreadSortOrder: Schema.optionalKey(SidebarThreadSortOrder),
   timestampFormat: Schema.optionalKey(TimestampFormat),
   terminalLayout: Schema.optionalKey(TerminalLayout),
+  terminalTabsEnabled: Schema.optionalKey(Schema.Boolean),
 });
 export type ClientSettingsPatch = typeof ClientSettingsPatch.Type;

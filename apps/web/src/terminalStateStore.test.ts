@@ -8,6 +8,7 @@ import {
   selectThreadTerminalState,
   useTerminalStateStore,
 } from "./terminalStateStore";
+import { LAZYGIT_TERMINAL_ID } from "./types";
 
 const THREAD_ID = ThreadId.make("thread-1");
 const THREAD_REF = scopeThreadRef("environment-a" as never, THREAD_ID);
@@ -326,6 +327,45 @@ describe("terminalStateStore actions", () => {
       cwd: "/tmp/worktree",
       worktreePath: "/tmp/worktree",
     });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.event.type).toBe("started");
+  });
+
+  it("buffers lazygit terminal events without registering them in the normal terminal state", () => {
+    const store = useTerminalStateStore.getState();
+    store.applyTerminalEvent(
+      THREAD_REF,
+      makeTerminalEvent("started", {
+        terminalId: LAZYGIT_TERMINAL_ID,
+        snapshot: {
+          threadId: THREAD_ID,
+          terminalId: LAZYGIT_TERMINAL_ID,
+          cwd: "/tmp/worktree",
+          worktreePath: "/tmp/worktree",
+          status: "running",
+          pid: 123,
+          history: "",
+          exitCode: null,
+          exitSignal: null,
+          updatedAt: "2026-04-02T20:00:00.000Z",
+        },
+      }),
+    );
+
+    const terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadKey,
+      THREAD_REF,
+    );
+    const entries = selectTerminalEventEntries(
+      useTerminalStateStore.getState().terminalEventEntriesByKey,
+      THREAD_REF,
+      LAZYGIT_TERMINAL_ID,
+    );
+
+    expect(terminalState.terminalOpen).toBe(false);
+    expect(terminalState.terminalIds).toEqual(["default"]);
+    expect(terminalState.activeTerminalId).toBe("default");
+    expect(useTerminalStateStore.getState().terminalLaunchContextByThreadKey).toEqual({});
     expect(entries).toHaveLength(1);
     expect(entries[0]?.event.type).toBe("started");
   });

@@ -542,6 +542,7 @@ describe("wsApi", () => {
       sidebarThreadSortOrder: "created_at" as const,
       timestampFormat: "24-hour" as const,
       terminalLayout: "floating" as const,
+      terminalTabsEnabled: true,
     };
     const getClientSettings = vi.fn().mockResolvedValue({
       ...clientSettings,
@@ -602,6 +603,7 @@ describe("wsApi", () => {
       sidebarThreadSortOrder: "created_at" as const,
       timestampFormat: "24-hour" as const,
       terminalLayout: "floating" as const,
+      terminalTabsEnabled: true,
     };
 
     await api.persistence.setClientSettings(clientSettings);

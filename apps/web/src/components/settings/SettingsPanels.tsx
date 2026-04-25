@@ -483,6 +483,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.terminalLayout !== DEFAULT_UNIFIED_SETTINGS.terminalLayout
         ? ["Terminal layout"]
         : []),
+      ...(settings.terminalTabsEnabled !== DEFAULT_UNIFIED_SETTINGS.terminalTabsEnabled
+        ? ["Terminal tabs"]
+        : []),
       ...(settings.enableAssistantStreaming !== DEFAULT_UNIFIED_SETTINGS.enableAssistantStreaming
         ? ["Assistant output"]
         : []),
@@ -512,6 +515,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.diffWordWrap,
       settings.enableAssistantStreaming,
       settings.terminalLayout,
+      settings.terminalTabsEnabled,
       settings.timestampFormat,
       theme,
     ],
@@ -1020,6 +1024,32 @@ export function GeneralSettingsPanel() {
                 </SelectItem>
               </SelectPopup>
             </Select>
+          }
+        />
+
+        <SettingsRow
+          title="Terminal tabs"
+          description="Show terminal windows as tabs while keeping split terminals inside the active tab."
+          resetAction={
+            settings.terminalTabsEnabled !== DEFAULT_UNIFIED_SETTINGS.terminalTabsEnabled ? (
+              <SettingResetButton
+                label="terminal tabs"
+                onClick={() =>
+                  updateSettings({
+                    terminalTabsEnabled: DEFAULT_UNIFIED_SETTINGS.terminalTabsEnabled,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.terminalTabsEnabled}
+              onCheckedChange={(checked) =>
+                updateSettings({ terminalTabsEnabled: Boolean(checked) })
+              }
+              aria-label="Show terminal tabs"
+            />
           }
         />
 

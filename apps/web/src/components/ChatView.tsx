@@ -87,10 +87,12 @@ import {
   DEFAULT_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
   DEFAULT_THREAD_TERMINAL_ID,
+  LAZYGIT_TERMINAL_ID,
   MAX_TERMINALS_PER_GROUP,
   type ChatMessage,
   type SessionPhase,
   type Thread,
+  type ThreadTerminalGroup,
   type TurnDiffSummary,
 } from "../types";
 import { useTheme } from "../hooks/useTheme";
@@ -103,7 +105,7 @@ import { BranchToolbar } from "./BranchToolbar";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import PlanSidebar from "./PlanSidebar";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
-import { ChevronDownIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import { cn, randomUUID } from "~/lib/utils";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { decodeProjectScriptKeybindingRule } from "~/lib/projectScriptKeybindings";
@@ -420,8 +422,15 @@ interface PersistentThreadTerminalDrawerProps {
   closeShortcutLabel: string | undefined;
   keybindings: ResolvedKeybindingsConfig;
   terminalLayout: TerminalLayout;
+  terminalTabsEnabled: boolean;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
 }
+
+const LAZYGIT_TERMINAL_GROUPS: ThreadTerminalGroup[] = [
+  { id: "group-lazygit", terminalIds: [LAZYGIT_TERMINAL_ID] },
+];
+const LAZYGIT_TERMINAL_HEIGHT = 960;
+const LAZYGIT_TERMINAL_MAX_HEIGHT_RATIO = 0.92;
 
 const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDrawer({
   threadRef,
@@ -434,6 +443,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
   closeShortcutLabel,
   keybindings,
   terminalLayout,
+  terminalTabsEnabled,
   onAddTerminalContext,
 }: PersistentThreadTerminalDrawerProps) {
   const serverThread = useStore(useMemo(() => createThreadSelectorByRef(threadRef), [threadRef]));
@@ -587,6 +597,9 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
       onHeightChange={setTerminalHeight}
       onAddTerminalContext={handleAddTerminalContext}
       layout={terminalLayout}
+      tabsEnabled={terminalTabsEnabled}
+      surfaceTitleId={terminalLayout === "floating" ? floatingTerminalTitleId : undefined}
+      onCloseSurface={terminalLayout === "floating" ? closeTerminalWindow : undefined}
     />
   );
 
@@ -594,7 +607,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
     return (
       <div
         className={cn(
-          "fixed inset-0 z-50 bg-black/32 backdrop-blur-sm",
+          "fixed inset-0 z-50 bg-black/32 [-webkit-app-region:no-drag]",
           visible ? "grid grid-rows-[1fr_auto_3fr] justify-items-center p-4" : "hidden",
         )}
         onMouseDown={(event) => {
@@ -609,19 +622,6 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
           aria-labelledby={floatingTerminalTitleId}
           className="row-start-2 w-[min(96vw,72rem)] max-w-[min(96vw,72rem)] overflow-hidden rounded-lg border bg-background p-0 shadow-xl"
         >
-          <div className="flex h-8 shrink-0 items-center justify-between border-b border-border/80 px-2">
-            <h2 id={floatingTerminalTitleId} className="text-xs font-medium leading-none">
-              Terminal
-            </h2>
-            <button
-              type="button"
-              className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              onClick={closeTerminalWindow}
-              aria-label="Close terminal window"
-            >
-              <XIcon className="size-3.5" />
-            </button>
-          </div>
           {drawer}
         </div>
       </div>
@@ -629,6 +629,90 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
   }
 
   return <div className={visible ? undefined : "hidden"}>{drawer}</div>;
+});
+
+interface LazyGitTerminalWindowProps {
+  threadRef: ScopedThreadRef;
+  cwd: string;
+  worktreePath: string | null;
+  keybindings: ResolvedKeybindingsConfig;
+  focusRequestId: number;
+  initialCommand: string | undefined;
+  onInitialCommandSent: () => void;
+  onClose: () => void;
+  onAddTerminalContext: (selection: TerminalContextSelection) => void;
+}
+
+const LazyGitTerminalWindow = memo(function LazyGitTerminalWindow({
+  threadRef,
+  cwd,
+  worktreePath,
+  keybindings,
+  focusRequestId,
+  initialCommand,
+  onInitialCommandSent,
+  onClose,
+  onAddTerminalContext,
+}: LazyGitTerminalWindowProps) {
+  const titleId = useId();
+  const runtimeEnv = useMemo(
+    () =>
+      projectScriptRuntimeEnv({
+        project: { cwd },
+        worktreePath,
+      }),
+    [cwd, worktreePath],
+  );
+  const hideLazyGit = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/32 p-4 [-webkit-app-region:no-drag]"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          hideLazyGit();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="w-[min(98vw,124rem)] max-w-[min(98vw,124rem)] overflow-hidden rounded-lg border bg-background p-0 shadow-xl"
+      >
+        <ThreadTerminalDrawer
+          threadRef={threadRef}
+          threadId={threadRef.threadId}
+          cwd={cwd}
+          worktreePath={worktreePath}
+          runtimeEnv={runtimeEnv}
+          height={LAZYGIT_TERMINAL_HEIGHT}
+          terminalIds={[LAZYGIT_TERMINAL_ID]}
+          activeTerminalId={LAZYGIT_TERMINAL_ID}
+          terminalGroups={LAZYGIT_TERMINAL_GROUPS}
+          activeTerminalGroupId={LAZYGIT_TERMINAL_GROUPS[0]!.id}
+          focusRequestId={focusRequestId}
+          onSplitTerminal={() => {}}
+          onNewTerminal={() => {}}
+          onActiveTerminalChange={() => {}}
+          onCloseTerminal={hideLazyGit}
+          onHeightChange={() => {}}
+          onAddTerminalContext={onAddTerminalContext}
+          keybindings={keybindings}
+          layout="floating"
+          controlsEnabled={false}
+          surfaceTitle="Lazygit"
+          surfaceTitleId={titleId}
+          onCloseSurface={hideLazyGit}
+          initialCommand={initialCommand}
+          onInitialCommandSent={onInitialCommandSent}
+          maxHeightRatio={LAZYGIT_TERMINAL_MAX_HEIGHT_RATIO}
+        />
+      </div>
+    </div>
+  );
 });
 
 export default function ChatView(props: ChatViewProps) {
@@ -738,6 +822,9 @@ export default function ChatView(props: ChatViewProps) {
   // Used by "Implement in a new thread" to carry the sidebar-open intent across navigation.
   const planSidebarOpenOnNextThreadRef = useRef(false);
   const [terminalFocusRequestId, setTerminalFocusRequestId] = useState(0);
+  const [lazyGitOpen, setLazyGitOpen] = useState(false);
+  const [lazyGitFocusRequestId, setLazyGitFocusRequestId] = useState(0);
+  const lazyGitInitialCommandSentThreadKeysRef = useRef<Set<string>>(new Set());
   const [pullRequestDialogState, setPullRequestDialogState] =
     useState<PullRequestDialogState | null>(null);
   const [terminalLaunchContext, setTerminalLaunchContext] = useState<TerminalLaunchContext | null>(
@@ -1485,6 +1572,9 @@ export default function ChatView(props: ChatViewProps) {
       : (storeServerTerminalLaunchContext ?? null);
   // Default true while loading to avoid toolbar flicker.
   const isGitRepo = gitStatusQuery.data?.isRepo ?? true;
+  useEffect(() => {
+    setLazyGitOpen(false);
+  }, [activeThreadKey, isGitRepo]);
   const terminalShortcutLabelOptions = useMemo(
     () => ({
       context: {
@@ -1505,6 +1595,10 @@ export default function ChatView(props: ChatViewProps) {
   );
   const terminalToggleShortcutLabel = useMemo(
     () => shortcutLabelForCommand(keybindings, "terminal.toggle"),
+    [keybindings],
+  );
+  const lazyGitToggleShortcutLabel = useMemo(
+    () => shortcutLabelForCommand(keybindings, "terminal.lazygit.toggle"),
     [keybindings],
   );
   const splitTerminalShortcutLabel = useMemo(
@@ -1626,6 +1720,11 @@ export default function ChatView(props: ChatViewProps) {
     if (!activeThreadRef) return;
     setTerminalOpen(!terminalState.terminalOpen);
   }, [activeThreadRef, setTerminalOpen, terminalState.terminalOpen]);
+  const toggleLazyGit = useCallback(() => {
+    if (!activeThreadRef || !gitCwd || !isGitRepo) return;
+    setLazyGitOpen((open) => !open);
+    setLazyGitFocusRequestId((value) => value + 1);
+  }, [activeThreadRef, gitCwd, isGitRepo]);
   const splitTerminal = useCallback(() => {
     if (!activeThreadRef || hasReachedSplitLimit) return;
     const terminalId = `terminal-${randomUUID()}`;
@@ -2307,6 +2406,13 @@ export default function ChatView(props: ChatViewProps) {
         return;
       }
 
+      if (command === "terminal.lazygit.toggle") {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleLazyGit();
+        return;
+      }
+
       if (command === "terminal.split") {
         event.preventDefault();
         event.stopPropagation();
@@ -2371,6 +2477,7 @@ export default function ChatView(props: ChatViewProps) {
     splitTerminal,
     keybindings,
     onToggleDiff,
+    toggleLazyGit,
     toggleTerminalVisibility,
   ]);
 
@@ -3311,7 +3418,9 @@ export default function ChatView(props: ChatViewProps) {
           terminalAvailable={activeProject !== undefined}
           terminalOpen={terminalState.terminalOpen}
           terminalLayout={settings.terminalLayout}
+          lazyGitOpen={lazyGitOpen}
           terminalToggleShortcutLabel={terminalToggleShortcutLabel}
+          lazyGitToggleShortcutLabel={lazyGitToggleShortcutLabel}
           diffToggleShortcutLabel={diffPanelShortcutLabel}
           gitCwd={gitCwd}
           diffOpen={diffOpen}
@@ -3320,6 +3429,7 @@ export default function ChatView(props: ChatViewProps) {
           onUpdateProjectScript={updateProjectScript}
           onDeleteProjectScript={deleteProjectScript}
           onToggleTerminal={toggleTerminalVisibility}
+          onToggleLazyGit={toggleLazyGit}
           onToggleDiff={onToggleDiff}
         />
       </header>
@@ -3526,9 +3636,31 @@ export default function ChatView(props: ChatViewProps) {
           closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
           keybindings={keybindings}
           terminalLayout={settings.terminalLayout}
+          terminalTabsEnabled={settings.terminalTabsEnabled}
           onAddTerminalContext={addTerminalContextToDraft}
         />
       ))}
+      {lazyGitOpen && activeThreadRef && gitCwd ? (
+        <LazyGitTerminalWindow
+          threadRef={activeThreadRef}
+          cwd={gitCwd}
+          worktreePath={activeThreadWorktreePath}
+          keybindings={keybindings}
+          focusRequestId={lazyGitFocusRequestId}
+          initialCommand={
+            activeThreadKey && !lazyGitInitialCommandSentThreadKeysRef.current.has(activeThreadKey)
+              ? "lazygit\r"
+              : undefined
+          }
+          onInitialCommandSent={() => {
+            if (activeThreadKey) {
+              lazyGitInitialCommandSentThreadKeysRef.current.add(activeThreadKey);
+            }
+          }}
+          onClose={() => setLazyGitOpen(false)}
+          onAddTerminalContext={addTerminalContextToDraft}
+        />
+      ) : null}
       {shouldUsePlanSidebarSheet ? (
         <RightPanelSheet open={planSidebarOpen} onClose={closePlanSidebar}>
           <PlanSidebar

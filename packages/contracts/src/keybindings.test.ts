@@ -35,6 +35,12 @@ it.effect("parses keybinding rules", () =>
     });
     assert.strictEqual(parsedClose.command, "terminal.close");
 
+    const parsedLazyGitToggle = yield* decode(KeybindingRule, {
+      key: "mod+g",
+      command: "terminal.lazygit.toggle",
+    });
+    assert.strictEqual(parsedLazyGitToggle.command, "terminal.lazygit.toggle");
+
     const parsedDiffToggle = yield* decode(KeybindingRule, {
       key: "mod+d",
       command: "diff.toggle",

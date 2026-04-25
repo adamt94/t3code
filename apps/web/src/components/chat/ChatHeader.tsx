@@ -10,7 +10,7 @@ import { scopeThreadRef } from "@t3tools/client-runtime";
 import { memo } from "react";
 import GitActionsControl from "../GitActionsControl";
 import { type DraftId } from "~/composerDraftStore";
-import { DiffIcon, TerminalSquareIcon } from "lucide-react";
+import { DiffIcon, GitBranchIcon, TerminalSquareIcon } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import ProjectScriptsControl, { type NewProjectScriptInput } from "../ProjectScriptsControl";
@@ -33,7 +33,9 @@ interface ChatHeaderProps {
   terminalAvailable: boolean;
   terminalOpen: boolean;
   terminalLayout: TerminalLayout;
+  lazyGitOpen: boolean;
   terminalToggleShortcutLabel: string | null;
+  lazyGitToggleShortcutLabel: string | null;
   diffToggleShortcutLabel: string | null;
   gitCwd: string | null;
   diffOpen: boolean;
@@ -42,6 +44,7 @@ interface ChatHeaderProps {
   onUpdateProjectScript: (scriptId: string, input: NewProjectScriptInput) => Promise<void>;
   onDeleteProjectScript: (scriptId: string) => Promise<void>;
   onToggleTerminal: () => void;
+  onToggleLazyGit: () => void;
   onToggleDiff: () => void;
 }
 
@@ -60,7 +63,9 @@ export const ChatHeader = memo(function ChatHeader({
   terminalAvailable,
   terminalOpen,
   terminalLayout,
+  lazyGitOpen,
   terminalToggleShortcutLabel,
+  lazyGitToggleShortcutLabel,
   diffToggleShortcutLabel,
   gitCwd,
   diffOpen,
@@ -69,6 +74,7 @@ export const ChatHeader = memo(function ChatHeader({
   onUpdateProjectScript,
   onDeleteProjectScript,
   onToggleTerminal,
+  onToggleLazyGit,
   onToggleDiff,
 }: ChatHeaderProps) {
   const terminalSurfaceLabel =
@@ -143,6 +149,34 @@ export const ChatHeader = memo(function ChatHeader({
               : terminalToggleShortcutLabel
                 ? `Toggle ${terminalSurfaceLabel} (${terminalToggleShortcutLabel})`
                 : `Toggle ${terminalSurfaceLabel}`}
+          </TooltipPopup>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Toggle
+                className="shrink-0"
+                pressed={lazyGitOpen}
+                onPressedChange={() => onToggleLazyGit()}
+                aria-label="Open lazygit"
+                variant="outline"
+                size="xs"
+                disabled={!isGitRepo}
+              >
+                <GitBranchIcon className="size-3" />
+              </Toggle>
+            }
+          />
+          <TooltipPopup side="bottom">
+            {!isGitRepo
+              ? "Lazygit is unavailable because this project is not a git repository."
+              : lazyGitOpen
+                ? lazyGitToggleShortcutLabel
+                  ? `Close lazygit (${lazyGitToggleShortcutLabel})`
+                  : "Close lazygit"
+                : lazyGitToggleShortcutLabel
+                  ? `Open lazygit (${lazyGitToggleShortcutLabel})`
+                  : "Open lazygit"}
           </TooltipPopup>
         </Tooltip>
         <Tooltip>
