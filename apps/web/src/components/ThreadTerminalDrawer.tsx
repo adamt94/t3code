@@ -263,7 +263,6 @@ interface TerminalViewportProps {
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
   focusRequestId: number;
   autoFocus: boolean;
-  restartOnMount?: boolean | undefined;
   resizeEpoch: number;
   drawerHeight: number;
   keybindings: ResolvedKeybindingsConfig;
@@ -283,7 +282,6 @@ export function TerminalViewport({
   onAddTerminalContext,
   focusRequestId,
   autoFocus,
-  restartOnMount = false,
   resizeEpoch,
   drawerHeight,
   keybindings,
@@ -681,7 +679,7 @@ export function TerminalViewport({
         const activeFitAddon = fitAddonRef.current;
         if (!activeTerminal || !activeFitAddon) return;
         activeFitAddon.fit();
-        const startInput = {
+        const snapshot = await api.terminal.open({
           threadId,
           terminalId,
           cwd,
@@ -689,10 +687,7 @@ export function TerminalViewport({
           cols: activeTerminal.cols,
           rows: activeTerminal.rows,
           ...(runtimeEnv ? { env: runtimeEnv } : {}),
-        };
-        const snapshot = restartOnMount
-          ? await api.terminal.restart(startInput)
-          : await api.terminal.open(startInput);
+        });
         if (disposed) return;
         writeTerminalSnapshot(activeTerminal, snapshot);
         const bufferedEntries = selectTerminalEventEntries(
@@ -774,7 +769,7 @@ export function TerminalViewport({
     // autoFocus is intentionally omitted;
     // it is only read at mount time and must not trigger terminal teardown/recreation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cwd, environmentId, initialCommand, restartOnMount, runtimeEnv, terminalId, threadId]);
+  }, [cwd, environmentId, initialCommand, runtimeEnv, terminalId, threadId]);
 
   useEffect(() => {
     if (!autoFocus) return;
@@ -848,7 +843,6 @@ interface ThreadTerminalDrawerProps {
   controlsEnabled?: boolean;
   initialCommand?: string | undefined;
   onInitialCommandSent?: (() => void) | undefined;
-  restartOnMount?: boolean | undefined;
   maxHeightRatio?: number | undefined;
   surfaceTitle?: string | undefined;
   surfaceTitleId?: string | undefined;
@@ -912,7 +906,6 @@ export default function ThreadTerminalDrawer({
   controlsEnabled = true,
   initialCommand,
   onInitialCommandSent,
-  restartOnMount,
   maxHeightRatio = MAX_DRAWER_HEIGHT_RATIO,
   surfaceTitle = "Terminal",
   surfaceTitleId,
@@ -1370,7 +1363,6 @@ export default function ThreadTerminalDrawer({
                         {...(runtimeEnv ? { runtimeEnv } : {})}
                         initialCommand={initialCommand}
                         onInitialCommandSent={onInitialCommandSent}
-                        restartOnMount={restartOnMount}
                         onSessionExited={() => onCloseTerminal(terminalId)}
                         onAddTerminalContext={onAddTerminalContext}
                         focusRequestId={focusRequestId}
@@ -1396,7 +1388,6 @@ export default function ThreadTerminalDrawer({
                   {...(runtimeEnv ? { runtimeEnv } : {})}
                   initialCommand={initialCommand}
                   onInitialCommandSent={onInitialCommandSent}
-                  restartOnMount={restartOnMount}
                   onSessionExited={() => onCloseTerminal(resolvedActiveTerminalId)}
                   onAddTerminalContext={onAddTerminalContext}
                   focusRequestId={focusRequestId}
