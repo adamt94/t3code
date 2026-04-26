@@ -33,6 +33,18 @@ export const DEFAULT_SIDEBAR_PROJECT_GROUPING_MODE: SidebarProjectGroupingMode =
 export const TerminalLayout = Schema.Literals(["docked", "floating"]);
 export type TerminalLayout = typeof TerminalLayout.Type;
 export const DEFAULT_TERMINAL_LAYOUT: TerminalLayout = "docked";
+
+export const ColorScheme = Schema.Literals([
+  "app",
+  "github",
+  "solarized",
+  "catppuccin",
+  "one",
+  "tokyo-night",
+  "gruvbox",
+]);
+export type ColorScheme = typeof ColorScheme.Type;
+export const DEFAULT_COLOR_SCHEME: ColorScheme = "app";
 const TerminalLayoutSetting = Schema.Union([TerminalLayout, Schema.Literal("tabs")]).pipe(
   Schema.decodeTo(
     TerminalLayout,
@@ -74,6 +86,9 @@ export const ClientSettingsSchema = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TERMINAL_LAYOUT)),
   ),
   terminalTabsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  colorScheme: ColorScheme.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_COLOR_SCHEME)),
+  ),
 });
 export type ClientSettings = typeof ClientSettingsSchema.Type;
 
@@ -282,5 +297,6 @@ export const ClientSettingsPatch = Schema.Struct({
   timestampFormat: Schema.optionalKey(TimestampFormat),
   terminalLayout: Schema.optionalKey(TerminalLayout),
   terminalTabsEnabled: Schema.optionalKey(Schema.Boolean),
+  colorScheme: Schema.optionalKey(ColorScheme),
 });
 export type ClientSettingsPatch = typeof ClientSettingsPatch.Type;

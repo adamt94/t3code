@@ -28,6 +28,7 @@ import {
 import { resolveAndPersistPreferredEditor } from "../editorPreferences";
 import { readLocalApi } from "../localApi";
 import { useSettings } from "../hooks/useSettings";
+import { applyAppColorScheme } from "../lib/appThemes";
 import {
   deriveLogicalProjectKeyFromSettings,
   derivePhysicalProjectKeyFromPath,
@@ -97,6 +98,7 @@ function RootRouteView() {
   return (
     <ToastProvider>
       <AnchoredToastProvider>
+        <ColorSchemeBootstrap />
         <AuthenticatedTracingBootstrap />
         <ServerStateBootstrap />
         <EnvironmentConnectionManagerBootstrap />
@@ -184,6 +186,16 @@ function errorDetails(error: unknown): string {
   } catch {
     return "No additional error details are available.";
   }
+}
+
+function ColorSchemeBootstrap() {
+  const colorScheme = useSettings((s) => s.colorScheme);
+
+  useEffect(() => {
+    applyAppColorScheme(colorScheme);
+  }, [colorScheme]);
+
+  return null;
 }
 
 function ServerStateBootstrap() {

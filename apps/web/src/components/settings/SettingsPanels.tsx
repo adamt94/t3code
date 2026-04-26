@@ -19,6 +19,7 @@ import {
 } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime";
 import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
+import { TERMINAL_COLOR_SCHEME_OPTIONS } from "../../lib/terminalThemes";
 import { createModelSelection, normalizeModelSlug } from "@t3tools/shared/model";
 import { Equal } from "effect";
 import { APP_VERSION } from "../../branding";
@@ -486,6 +487,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.terminalTabsEnabled !== DEFAULT_UNIFIED_SETTINGS.terminalTabsEnabled
         ? ["Terminal tabs"]
         : []),
+      ...(settings.colorScheme !== DEFAULT_UNIFIED_SETTINGS.colorScheme
+        ? ["Color scheme"]
+        : []),
       ...(settings.enableAssistantStreaming !== DEFAULT_UNIFIED_SETTINGS.enableAssistantStreaming
         ? ["Assistant output"]
         : []),
@@ -514,6 +518,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.defaultThreadEnvMode,
       settings.diffWordWrap,
       settings.enableAssistantStreaming,
+      settings.colorScheme,
       settings.terminalLayout,
       settings.terminalTabsEnabled,
       settings.timestampFormat,
@@ -1050,6 +1055,49 @@ export function GeneralSettingsPanel() {
               }
               aria-label="Show terminal tabs"
             />
+          }
+        />
+
+        <SettingsRow
+          title="Color scheme"
+          description="Apply a consistent color palette across the whole app and terminal. Works alongside your light/dark mode setting."
+          resetAction={
+            settings.colorScheme !== DEFAULT_UNIFIED_SETTINGS.colorScheme ? (
+              <SettingResetButton
+                label="color scheme"
+                onClick={() =>
+                  updateSettings({
+                    colorScheme: DEFAULT_UNIFIED_SETTINGS.colorScheme,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.colorScheme}
+              onValueChange={(value) => {
+                const option = TERMINAL_COLOR_SCHEME_OPTIONS.find((o) => o.value === value);
+                if (option) {
+                  updateSettings({ colorScheme: option.value });
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-44" aria-label="Terminal color scheme">
+                <SelectValue>
+                  {TERMINAL_COLOR_SCHEME_OPTIONS.find(
+                    (o) => o.value === settings.colorScheme,
+                  )?.label ?? "App theme"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                {TERMINAL_COLOR_SCHEME_OPTIONS.map((option) => (
+                  <SelectItem hideIndicator key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
           }
         />
 

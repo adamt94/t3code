@@ -1,6 +1,7 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { Plus, SquareSplitHorizontal, TerminalSquare, Trash2, XIcon } from "lucide-react";
 import {
+  type ColorScheme,
   type ResolvedKeybindingsConfig,
   type ScopedThreadRef,
   type TerminalLayout,
@@ -9,6 +10,8 @@ import {
   type ThreadId,
 } from "@t3tools/contracts";
 import { Terminal, type ITheme } from "@xterm/xterm";
+import { resolveColorSchemeTheme } from "~/lib/terminalThemes";
+import { useSettings } from "~/hooks/useSettings";
 import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -104,8 +107,15 @@ function normalizeComputedColor(value: string | null | undefined, fallback: stri
   return value ?? fallback;
 }
 
-function terminalThemeFromApp(mountElement?: HTMLElement | null): ITheme {
+function terminalThemeFromApp(
+  mountElement?: HTMLElement | null,
+  colorScheme?: ColorScheme,
+): ITheme {
   const isDark = document.documentElement.classList.contains("dark");
+  if (colorScheme && colorScheme !== "app") {
+    const namedTheme = resolveColorSchemeTheme(colorScheme, isDark);
+    if (namedTheme) return namedTheme;
+  }
   const fallbackBackground = isDark ? "rgb(14, 18, 24)" : "rgb(255, 255, 255)";
   const fallbackForeground = isDark ? "rgb(237, 241, 247)" : "rgb(28, 33, 41)";
   const drawerSurface =
@@ -266,6 +276,7 @@ interface TerminalViewportProps {
   resizeEpoch: number;
   drawerHeight: number;
   keybindings: ResolvedKeybindingsConfig;
+  colorScheme?: ColorScheme;
 }
 
 export function TerminalViewport({
@@ -285,10 +296,12 @@ export function TerminalViewport({
   resizeEpoch,
   drawerHeight,
   keybindings,
+  colorScheme,
 }: TerminalViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const colorSchemeRef = useRef(colorScheme);
   const environmentId = threadRef.environmentId;
   const hasHandledExitRef = useRef(false);
   const selectionPointerRef = useRef<{ x: number; y: number } | null>(null);
@@ -315,6 +328,18 @@ export function TerminalViewport({
   }, [keybindings]);
 
   useEffect(() => {
+    colorSchemeRef.current = colorScheme;
+  }, [colorScheme]);
+
+  // Re-apply theme whenever colorScheme changes on an already-mounted terminal
+  useEffect(() => {
+    const activeTerminal = terminalRef.current;
+    if (!activeTerminal) return;
+    activeTerminal.options.theme = terminalThemeFromApp(containerRef.current, colorScheme);
+    activeTerminal.refresh(0, activeTerminal.rows - 1);
+  }, [colorScheme]);
+
+  useEffect(() => {
     const mount = containerRef.current;
     if (!mount) return;
 
@@ -330,7 +355,7 @@ export function TerminalViewport({
       fontSize: 12,
       scrollback: 5_000,
       fontFamily: '"SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
-      theme: terminalThemeFromApp(mount),
+      theme: terminalThemeFromApp(mount, colorScheme),
     });
     terminal.loadAddon(fitAddon);
     terminal.open(mount);
@@ -568,7 +593,7 @@ export function TerminalViewport({
     const themeObserver = new MutationObserver(() => {
       const activeTerminal = terminalRef.current;
       if (!activeTerminal) return;
-      activeTerminal.options.theme = terminalThemeFromApp(containerRef.current);
+      activeTerminal.options.theme = terminalThemeFromApp(containerRef.current, colorSchemeRef.current);
       activeTerminal.refresh(0, activeTerminal.rows - 1);
     });
     themeObserver.observe(document.documentElement, {
@@ -911,6 +936,7 @@ export default function ThreadTerminalDrawer({
   surfaceTitleId,
   onCloseSurface,
 }: ThreadTerminalDrawerProps) {
+  const colorScheme = useSettings((s) => s.colorScheme);
   const [drawerHeight, setDrawerHeight] = useState(() => clampDrawerHeight(height, maxHeightRatio));
   const [resizeEpoch, setResizeEpoch] = useState(0);
   const drawerHeightRef = useRef(drawerHeight);
@@ -1370,6 +1396,7 @@ export default function ThreadTerminalDrawer({
                         resizeEpoch={resizeEpoch}
                         drawerHeight={drawerHeight}
                         keybindings={keybindings}
+                        colorScheme={colorScheme}
                       />
                     </div>
                   </div>
@@ -1395,6 +1422,7 @@ export default function ThreadTerminalDrawer({
                   resizeEpoch={resizeEpoch}
                   drawerHeight={drawerHeight}
                   keybindings={keybindings}
+                  colorScheme={colorScheme}
                 />
               </div>
             )}
