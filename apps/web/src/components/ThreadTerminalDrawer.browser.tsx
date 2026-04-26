@@ -138,6 +138,18 @@ function createEnvironmentApi() {
         exitSignal: null,
         updatedAt: "2026-04-07T00:00:00.000Z",
       })),
+      restart: vi.fn(async () => ({
+        threadId: THREAD_ID,
+        terminalId: "default",
+        cwd: "/repo/project",
+        worktreePath: null,
+        status: "running" as const,
+        pid: 124,
+        history: "",
+        exitCode: null,
+        exitSignal: null,
+        updatedAt: "2026-04-07T00:00:01.000Z",
+      })),
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
     },
@@ -148,6 +160,7 @@ async function mountTerminalViewport(props: {
   threadRef: ReturnType<typeof scopeThreadRef>;
   drawerBackgroundColor?: string;
   drawerTextColor?: string;
+  restartOnMount?: boolean;
 }) {
   const drawer = document.createElement("div");
   drawer.className = "thread-terminal-drawer";
@@ -175,6 +188,7 @@ async function mountTerminalViewport(props: {
       onAddTerminalContext={() => undefined}
       focusRequestId={0}
       autoFocus={false}
+      restartOnMount={props.restartOnMount}
       resizeEpoch={0}
       drawerHeight={320}
       keybindings={[]}
@@ -195,6 +209,7 @@ async function mountTerminalViewport(props: {
           onAddTerminalContext={() => undefined}
           focusRequestId={0}
           autoFocus={false}
+          restartOnMount={props.restartOnMount}
           resizeEpoch={0}
           drawerHeight={320}
           keybindings={[]}
@@ -285,6 +300,25 @@ describe("TerminalViewport", () => {
         expect(environment.terminal.open).toHaveBeenCalledTimes(1);
       });
       expect(terminalDisposeSpy).not.toHaveBeenCalled();
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("restarts instead of opening when restartOnMount is enabled", async () => {
+    const environment = createEnvironmentApi();
+    environmentApiById.set("environment-a", environment);
+
+    const mounted = await mountTerminalViewport({
+      threadRef: scopeThreadRef("environment-a" as never, THREAD_ID),
+      restartOnMount: true,
+    });
+
+    try {
+      await vi.waitFor(() => {
+        expect(environment.terminal.restart).toHaveBeenCalledTimes(1);
+      });
+      expect(environment.terminal.open).not.toHaveBeenCalled();
     } finally {
       await mounted.cleanup();
     }

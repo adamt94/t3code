@@ -708,6 +708,7 @@ const LazyGitTerminalWindow = memo(function LazyGitTerminalWindow({
           onCloseSurface={hideLazyGit}
           initialCommand={initialCommand}
           onInitialCommandSent={onInitialCommandSent}
+          restartOnMount
           maxHeightRatio={LAZYGIT_TERMINAL_MAX_HEIGHT_RATIO}
         />
       </div>
@@ -824,7 +825,6 @@ export default function ChatView(props: ChatViewProps) {
   const [terminalFocusRequestId, setTerminalFocusRequestId] = useState(0);
   const [lazyGitOpen, setLazyGitOpen] = useState(false);
   const [lazyGitFocusRequestId, setLazyGitFocusRequestId] = useState(0);
-  const lazyGitInitialCommandSentThreadKeysRef = useRef<Set<string>>(new Set());
   const [pullRequestDialogState, setPullRequestDialogState] =
     useState<PullRequestDialogState | null>(null);
   const [terminalLaunchContext, setTerminalLaunchContext] = useState<TerminalLaunchContext | null>(
@@ -3647,16 +3647,8 @@ export default function ChatView(props: ChatViewProps) {
           worktreePath={activeThreadWorktreePath}
           keybindings={keybindings}
           focusRequestId={lazyGitFocusRequestId}
-          initialCommand={
-            activeThreadKey && !lazyGitInitialCommandSentThreadKeysRef.current.has(activeThreadKey)
-              ? "lazygit\r"
-              : undefined
-          }
-          onInitialCommandSent={() => {
-            if (activeThreadKey) {
-              lazyGitInitialCommandSentThreadKeysRef.current.add(activeThreadKey);
-            }
-          }}
+          initialCommand="lazygit\r"
+          onInitialCommandSent={() => {}}
           onClose={() => setLazyGitOpen(false)}
           onAddTerminalContext={addTerminalContextToDraft}
         />
