@@ -17,6 +17,7 @@ import ProjectScriptsControl, { type NewProjectScriptInput } from "../ProjectScr
 import { Toggle } from "../ui/toggle";
 import { SidebarTrigger } from "../ui/sidebar";
 import { OpenInPicker } from "./OpenInPicker";
+import { usePrimaryEnvironmentId } from "../../environments/primary";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -46,6 +47,18 @@ interface ChatHeaderProps {
   onToggleTerminal: () => void;
   onToggleLazyGit: () => void;
   onToggleDiff: () => void;
+}
+
+export function shouldShowOpenInPicker(input: {
+  readonly activeProjectName: string | undefined;
+  readonly activeThreadEnvironmentId: EnvironmentId;
+  readonly primaryEnvironmentId: EnvironmentId | null;
+}): boolean {
+  return (
+    Boolean(input.activeProjectName) &&
+    input.primaryEnvironmentId !== null &&
+    input.activeThreadEnvironmentId === input.primaryEnvironmentId
+  );
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -79,6 +92,12 @@ export const ChatHeader = memo(function ChatHeader({
 }: ChatHeaderProps) {
   const terminalSurfaceLabel =
     terminalLayout === "floating" ? "terminal window" : "terminal drawer";
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const showOpenInPicker = shouldShowOpenInPicker({
+    activeProjectName,
+    activeThreadEnvironmentId,
+    primaryEnvironmentId,
+  });
 
   return (
     <div className="@container/header-actions flex min-w-0 flex-1 items-center gap-2">
@@ -113,7 +132,7 @@ export const ChatHeader = memo(function ChatHeader({
             onDeleteScript={onDeleteProjectScript}
           />
         )}
-        {activeProjectName && (
+        {showOpenInPicker && (
           <OpenInPicker
             keybindings={keybindings}
             availableEditors={availableEditors}
@@ -189,14 +208,14 @@ export const ChatHeader = memo(function ChatHeader({
                 aria-label="Toggle diff panel"
                 variant="outline"
                 size="xs"
-                disabled={!isGitRepo}
+                disabled={!isGitRepo && !diffOpen}
               >
                 <DiffIcon className="size-3" />
               </Toggle>
             }
           />
           <TooltipPopup side="bottom">
-            {!isGitRepo
+            {!isGitRepo && !diffOpen
               ? "Diff panel is unavailable because this project is not a git repository."
               : diffToggleShortcutLabel
                 ? `Toggle diff panel (${diffToggleShortcutLabel})`
