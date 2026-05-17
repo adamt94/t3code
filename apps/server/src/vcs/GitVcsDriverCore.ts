@@ -2114,6 +2114,28 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       ),
     );
 
+  // ── Project working-tree diff feature ──────────────────────────────────────
+  // Runs `git diff HEAD --patch --minimal` and returns the raw unified diff.
+  // Capped at RANGE_DIFF_PATCH_MAX_OUTPUT_BYTES (same limit as range diffs).
+  // Remove this block and the entry in the return object below to roll back.
+  const getWorkingTreeDiff: GitVcsDriver.GitVcsDriverShape["getWorkingTreeDiff"] = (cwd) =>
+    runGitStdoutWithOptions(
+      "GitVcsDriver.getWorkingTreeDiff",
+      cwd,
+      ["diff", "HEAD", "--patch", "--minimal"],
+      {
+        maxOutputBytes: RANGE_DIFF_PATCH_MAX_OUTPUT_BYTES,
+        truncateOutputAtMaxBytes: true,
+      },
+    ).pipe(
+      Effect.map((stdout) => {
+        const truncated = stdout.endsWith(OUTPUT_TRUNCATED_MARKER);
+        const diff = truncated ? stdout.slice(0, -OUTPUT_TRUNCATED_MARKER.length) : stdout;
+        return { diff: diff.trim(), truncated };
+      }),
+    );
+  // ───────────────────────────────────────────────────────────────────────────
+
   return GitVcsDriver.GitVcsDriver.of({
     execute,
     status,
@@ -2139,5 +2161,6 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     switchRef,
     initRepo,
     listLocalBranchNames,
+    getWorkingTreeDiff, // project working-tree diff feature
   });
 });

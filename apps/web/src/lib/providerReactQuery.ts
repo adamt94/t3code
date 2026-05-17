@@ -4,6 +4,8 @@ import {
   OrchestrationGetTurnDiffInput,
   ThreadId,
 } from "@t3tools/contracts";
+// Project working-tree diff feature import — remove to roll back
+import type { VcsGetWorkingTreeDiffResult } from "@t3tools/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -99,6 +101,41 @@ function isCheckpointTemporarilyUnavailable(error: unknown): boolean {
     message.includes("filesystem checkpoint is unavailable")
   );
 }
+
+// ── Project working-tree diff feature ─────────────────────────────────────────
+// Delete this entire block (and the import above) to roll back the feature.
+
+export interface WorkingTreeDiffQueryInput {
+  environmentId: EnvironmentId | null;
+  cwd: string | null;
+  enabled?: boolean;
+}
+
+export const workingTreeDiffQueryKeys = {
+  workingTreeDiff: (input: WorkingTreeDiffQueryInput) =>
+    ["vcs", "workingTreeDiff", input.environmentId ?? null, input.cwd ?? null] as const,
+};
+
+export function workingTreeDiffQueryOptions(input: WorkingTreeDiffQueryInput) {
+  return queryOptions<VcsGetWorkingTreeDiffResult>({
+    queryKey: workingTreeDiffQueryKeys.workingTreeDiff(input),
+    queryFn: async () => {
+      if (!input.environmentId || !input.cwd) {
+        throw new Error("Working tree diff requires an environment and project path.");
+      }
+      const { ensureEnvironmentApi } = await import("../environmentApi");
+      const api = ensureEnvironmentApi(input.environmentId);
+      return api.vcs.getWorkingTreeDiff({ cwd: input.cwd });
+    },
+    enabled: (input.enabled ?? true) && !!input.environmentId && !!input.cwd,
+    // Never auto-refetch — the refresh button calls refetch() explicitly.
+    staleTime: Infinity,
+    // Don't persist across route unmounts; each mount fetches fresh.
+    gcTime: 0,
+    retry: 1,
+  });
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 export function checkpointDiffQueryOptions(input: CheckpointDiffQueryInput) {
   const decodedRequest = decodeCheckpointDiffRequest(input);

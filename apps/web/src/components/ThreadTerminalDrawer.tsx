@@ -593,7 +593,10 @@ export function TerminalViewport({
     const themeObserver = new MutationObserver(() => {
       const activeTerminal = terminalRef.current;
       if (!activeTerminal) return;
-      activeTerminal.options.theme = terminalThemeFromApp(containerRef.current, colorSchemeRef.current);
+      activeTerminal.options.theme = terminalThemeFromApp(
+        containerRef.current,
+        colorSchemeRef.current,
+      );
       activeTerminal.refresh(0, activeTerminal.rows - 1);
     });
     themeObserver.observe(document.documentElement, {

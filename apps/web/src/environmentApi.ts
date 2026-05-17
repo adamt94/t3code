@@ -38,6 +38,8 @@ export function createEnvironmentApi(rpcClient: WsRpcClient): EnvironmentApi {
       createRef: rpcClient.vcs.createRef,
       switchRef: rpcClient.vcs.switchRef,
       init: rpcClient.vcs.init,
+      // Project working-tree diff feature — remove this line to roll back
+      getWorkingTreeDiff: rpcClient.vcs.getWorkingTreeDiff,
     },
     git: {
       resolvePullRequest: rpcClient.git.resolvePullRequest,

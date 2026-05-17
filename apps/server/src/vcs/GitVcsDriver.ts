@@ -210,6 +210,10 @@ export interface GitVcsDriverShape {
   ) => Effect.Effect<VcsSwitchRefResult, GitCommandError>;
   readonly initRepo: (input: VcsInitInput) => Effect.Effect<void, GitCommandError>;
   readonly listLocalBranchNames: (cwd: string) => Effect.Effect<string[], GitCommandError>;
+  // Project working-tree diff feature — remove this line to roll back
+  readonly getWorkingTreeDiff: (
+    cwd: string,
+  ) => Effect.Effect<{ diff: string; truncated: boolean }, GitCommandError>;
 }
 
 export class GitVcsDriver extends Context.Service<GitVcsDriver, GitVcsDriverShape>()(

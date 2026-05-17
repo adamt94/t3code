@@ -1092,6 +1092,13 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               .pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
             { "rpc.aggregate": "vcs" },
           ),
+        // Project working-tree diff feature — remove this block to roll back
+        [WS_METHODS.vcsGetWorkingTreeDiff]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.vcsGetWorkingTreeDiff,
+            gitWorkflow.getWorkingTreeDiff(input),
+            { "rpc.aggregate": "vcs" },
+          ),
         [WS_METHODS.terminalOpen]: (input) =>
           observeRpcEffect(WS_METHODS.terminalOpen, terminalManager.open(input), {
             "rpc.aggregate": "terminal",

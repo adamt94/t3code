@@ -4,6 +4,7 @@ import {
   ChevronRightIcon,
   CloudIcon,
   FolderPlusIcon,
+  GitBranchIcon, // project working-tree diff feature — remove to roll back
   SearchIcon,
   SettingsIcon,
   SquarePenIcon,
@@ -52,7 +53,14 @@ import {
   scopeProjectRef,
   scopeThreadRef,
 } from "@t3tools/client-runtime";
-import { Link, useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+  useRouter,
+  useSearch,
+} from "@tanstack/react-router";
 import {
   MAX_SIDEBAR_THREAD_PREVIEW_COUNT,
   MIN_SIDEBAR_THREAD_PREVIEW_COUNT,
@@ -90,6 +98,7 @@ import { readLocalApi } from "../localApi";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
 import { retainThreadDetailSubscription } from "../environments/runtime/service";
+import { parseProjectDiffRouteSearch } from "../projectDiffRouteSearch";
 
 import { useThreadActions } from "../hooks/useThreadActions";
 import {
@@ -100,6 +109,8 @@ import {
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { formatRelativeTimeLabel } from "../timestampFormat";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
+// Project working-tree diff feature — remove this import to roll back
+import { ProjectDiffSidebarContent } from "./project-diff/ProjectDiffSidebarContent";
 import { Kbd } from "./ui/kbd";
 import {
   getArm64IntelBuildWarningDescription,
@@ -950,6 +961,28 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   );
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
+  // ── Project working-tree diff feature ──────────────────────────────────────
+  // Remove this block (and the JSX below) to roll back the feature.
+  const navigateForDiff = useNavigate();
+  const projectGitStatus = useGitStatus({
+    environmentId: project.environmentId,
+    cwd: project.cwd,
+  });
+  const isGitProject = projectGitStatus.data?.isRepo === true;
+  const handleGitDiffClick = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      void navigateForDiff({
+        to: "/project/$environmentId/$projectId",
+        params: {
+          environmentId: project.environmentId,
+          projectId: project.id,
+        },
+      });
+    },
+    [navigateForDiff, project.environmentId, project.id],
+  );
+  // ───────────────────────────────────────────────────────────────────────────
   const markThreadUnread = useUiStateStore((state) => state.markThreadUnread);
   const toggleProject = useUiStateStore((state) => state.toggleProject);
   const toggleThreadSelection = useThreadSelectionStore((state) => state.toggleThread);
@@ -2052,6 +2085,26 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             </TooltipPopup>
           </Tooltip>
         )}
+        {/* Project working-tree diff button — remove this Tooltip block to roll back */}
+        {isGitProject && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <div className="pointer-events-none absolute top-1 right-7 opacity-0 transition-opacity duration-150 max-sm:pointer-events-auto max-sm:opacity-100 group-hover/project-header:pointer-events-auto group-hover/project-header:opacity-100 group-focus-within/project-header:pointer-events-auto group-focus-within/project-header:opacity-100">
+                  <button
+                    type="button"
+                    aria-label={`View git diff for ${project.displayName}`}
+                    className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/60 hover:bg-secondary hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                    onClick={handleGitDiffClick}
+                  >
+                    <GitBranchIcon className="size-3.5" />
+                  </button>
+                </div>
+              }
+            />
+            <TooltipPopup side="top">View working tree diff</TooltipPopup>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger
             render={
@@ -2797,6 +2850,21 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const pathname = useLocation({ select: (loc) => loc.pathname });
   const isOnSettings = pathname.startsWith("/settings");
+  // ── Project working-tree diff feature — remove these two lines to roll back
+  // The fullPath for _chat.project.$envId.$projectId is "/project/$envId/$projectId"
+  const isOnProjectDiff = pathname.startsWith("/project/");
+  const projectDiffParams = useParams({
+    strict: false,
+    select: (params) =>
+      "projectId" in params && "environmentId" in params && !("threadId" in params)
+        ? { environmentId: params.environmentId as string, projectId: params.projectId as string }
+        : null,
+  });
+  const projectDiffSearch = useSearch({
+    strict: false,
+    select: (search) => parseProjectDiffRouteSearch(search),
+  });
+  // ─────────────────────────────────────────────────────────────────────────
   const sidebarThreadSortOrder = useSettings((s) => s.sidebarThreadSortOrder);
   const sidebarProjectSortOrder = useSettings((s) => s.sidebarProjectSortOrder);
   const sidebarProjectGroupingMode = useSettings((s) => s.sidebarProjectGroupingMode);
@@ -3423,6 +3491,13 @@ export default function Sidebar() {
 
       {isOnSettings ? (
         <SettingsSidebarNav pathname={pathname} />
+      ) : /* project working-tree diff feature — remove this branch to roll back */
+      isOnProjectDiff && projectDiffParams ? (
+        <ProjectDiffSidebarContent
+          environmentId={projectDiffParams.environmentId}
+          projectId={projectDiffParams.projectId}
+          selectedFilePath={projectDiffSearch.gitDiffFilePath ?? null}
+        />
       ) : (
         <>
           <SidebarProjectsContent

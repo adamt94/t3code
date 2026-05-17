@@ -417,9 +417,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.terminalTabsEnabled !== DEFAULT_UNIFIED_SETTINGS.terminalTabsEnabled
         ? ["Terminal tabs"]
         : []),
-      ...(settings.colorScheme !== DEFAULT_UNIFIED_SETTINGS.colorScheme
-        ? ["Color scheme"]
-        : []),
+      ...(settings.colorScheme !== DEFAULT_UNIFIED_SETTINGS.colorScheme ? ["Color scheme"] : []),
       ...(settings.enableAssistantStreaming !== DEFAULT_UNIFIED_SETTINGS.enableAssistantStreaming
         ? ["Assistant output"]
         : []),
@@ -805,9 +803,8 @@ export function GeneralSettingsPanel() {
             >
               <SelectTrigger className="w-full sm:w-44" aria-label="Terminal color scheme">
                 <SelectValue>
-                  {TERMINAL_COLOR_SCHEME_OPTIONS.find(
-                    (o) => o.value === settings.colorScheme,
-                  )?.label ?? "App theme"}
+                  {TERMINAL_COLOR_SCHEME_OPTIONS.find((o) => o.value === settings.colorScheme)
+                    ?.label ?? "App theme"}
                 </SelectValue>
               </SelectTrigger>
               <SelectPopup align="end" alignItemWithTrigger={false}>

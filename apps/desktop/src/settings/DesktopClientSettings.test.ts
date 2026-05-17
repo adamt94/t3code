@@ -28,6 +28,9 @@ const clientSettings: ClientSettings = {
   sidebarThreadSortOrder: "created_at",
   sidebarThreadPreviewCount: 6,
   timestampFormat: "24-hour",
+  terminalLayout: "docked",
+  terminalTabsEnabled: false,
+  colorScheme: "app",
 };
 
 const decodeClientSettingsJson = Schema.decodeEffect(Schema.fromJsonString(ClientSettingsSchema));

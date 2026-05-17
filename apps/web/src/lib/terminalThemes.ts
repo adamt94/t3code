@@ -348,10 +348,7 @@ const GRUVBOX: TerminalThemePair = {
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 
-export const TERMINAL_THEME_PAIRS: Record<
-  Exclude<ColorScheme, "app">,
-  TerminalThemePair
-> = {
+export const TERMINAL_THEME_PAIRS: Record<Exclude<ColorScheme, "app">, TerminalThemePair> = {
   github: GITHUB,
   solarized: SOLARIZED,
   catppuccin: CATPPUCCIN,
@@ -378,10 +375,7 @@ export const TERMINAL_COLOR_SCHEME_OPTIONS: Array<{
  * mode. Returns null when the scheme is "app" so the caller falls back to the
  * app-derived theme.
  */
-export function resolveColorSchemeTheme(
-  scheme: ColorScheme,
-  isDark: boolean,
-): ITheme | null {
+export function resolveColorSchemeTheme(scheme: ColorScheme, isDark: boolean): ITheme | null {
   if (scheme === "app") return null;
   const pair = TERMINAL_THEME_PAIRS[scheme];
   return isDark ? pair.dark : pair.light;

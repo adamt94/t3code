@@ -26,6 +26,9 @@ import {
   type VcsStatusLocalResult,
   type VcsStatusRemoteResult,
   type VcsStatusResult,
+  // Project working-tree diff feature
+  type VcsGetWorkingTreeDiffInput,
+  type VcsGetWorkingTreeDiffResult,
 } from "@t3tools/contracts";
 
 import { GitManager, type GitRunStackedActionOptions } from "./GitManager.ts";
@@ -72,6 +75,10 @@ export interface GitWorkflowServiceShape {
     readonly oldBranch: string;
     readonly newBranch: string;
   }) => Effect.Effect<{ readonly branch: string }, GitManagerServiceError>;
+  // Project working-tree diff feature — remove this entry to roll back
+  readonly getWorkingTreeDiff: (
+    input: VcsGetWorkingTreeDiffInput,
+  ) => Effect.Effect<VcsGetWorkingTreeDiffResult, GitCommandError>;
 }
 
 export class GitWorkflowService extends Context.Service<
@@ -309,6 +316,15 @@ export const make = Effect.fn("makeGitWorkflowService")(function* () {
     renameBranch: (input) =>
       ensureGit("GitWorkflowService.renameBranch", input.cwd).pipe(
         Effect.andThen(git.renameBranch(input)),
+      ),
+    // Project working-tree diff feature — remove this entry to roll back
+    getWorkingTreeDiff: (input) =>
+      detectGitRepositoryForCommand("GitWorkflowService.getWorkingTreeDiff", input.cwd).pipe(
+        Effect.flatMap((isGitRepository) =>
+          isGitRepository
+            ? git.getWorkingTreeDiff(input.cwd)
+            : Effect.succeed({ diff: "", truncated: false }),
+        ),
       ),
   });
 });
