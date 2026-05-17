@@ -235,6 +235,24 @@ export const VcsStatusResult = Schema.Struct({
 });
 export type VcsStatusResult = typeof VcsStatusResult.Type;
 
+// ─── Project Working Tree Diff ───────────────────────────────────────────────
+// Feature: GitHub-style project diff panel. Fetch the raw unified diff for all
+// uncommitted working-tree changes (git diff HEAD). New file: easy to remove.
+
+export const VcsGetWorkingTreeDiffInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+});
+export type VcsGetWorkingTreeDiffInput = typeof VcsGetWorkingTreeDiffInput.Type;
+
+export const VcsGetWorkingTreeDiffResult = Schema.Struct({
+  /** Raw unified diff output from `git diff HEAD --patch --minimal`. */
+  diff: Schema.String,
+  /** True when the output was capped at the server-side byte limit. */
+  truncated: Schema.Boolean,
+});
+export type VcsGetWorkingTreeDiffResult = typeof VcsGetWorkingTreeDiffResult.Type;
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const VcsStatusStreamEvent = Schema.Union([
   Schema.TaggedStruct("snapshot", {
     local: VcsStatusLocalResult,

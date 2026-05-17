@@ -17,6 +17,9 @@ import type {
   VcsStatusInput,
   VcsStatusResult,
   VcsCreateRefResult,
+  // Project working-tree diff feature — remove these two lines to roll back
+  VcsGetWorkingTreeDiffInput,
+  VcsGetWorkingTreeDiffResult,
 } from "./git.ts";
 import type { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem.ts";
 import type {
@@ -532,6 +535,8 @@ export interface EnvironmentApi {
         onResubscribe?: () => void;
       },
     ) => () => void;
+    // Project working-tree diff feature — remove this line to roll back
+    getWorkingTreeDiff: (input: VcsGetWorkingTreeDiffInput) => Promise<VcsGetWorkingTreeDiffResult>;
   };
   git: {
     resolvePullRequest: (input: GitPullRequestRefInput) => Promise<GitResolvePullRequestResult>;

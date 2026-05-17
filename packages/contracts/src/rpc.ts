@@ -33,6 +33,9 @@ import {
   VcsStatusInput,
   VcsStatusResult,
   VcsStatusStreamEvent,
+  // Project working-tree diff feature
+  VcsGetWorkingTreeDiffInput,
+  VcsGetWorkingTreeDiffResult,
 } from "./git.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
 import {
@@ -120,6 +123,8 @@ export const WS_METHODS = {
   vcsCreateRef: "vcs.createRef",
   vcsSwitchRef: "vcs.switchRef",
   vcsInit: "vcs.init",
+  // Project working-tree diff feature — easy to remove if needed
+  vcsGetWorkingTreeDiff: "vcs.getWorkingTreeDiff",
 
   // Git workflow methods
   gitRunStackedAction: "git.runStackedAction",
@@ -348,6 +353,13 @@ export const WsVcsInitRpc = Rpc.make(WS_METHODS.vcsInit, {
   error: VcsError,
 });
 
+// Project working-tree diff feature — remove this block to roll back
+export const WsVcsGetWorkingTreeDiffRpc = Rpc.make(WS_METHODS.vcsGetWorkingTreeDiff, {
+  payload: VcsGetWorkingTreeDiffInput,
+  success: VcsGetWorkingTreeDiffResult,
+  error: GitCommandError,
+});
+
 export const WsTerminalOpenRpc = Rpc.make(WS_METHODS.terminalOpen, {
   payload: TerminalOpenInput,
   success: TerminalSessionSnapshot,
@@ -492,6 +504,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsVcsCreateRefRpc,
   WsVcsSwitchRefRpc,
   WsVcsInitRpc,
+  WsVcsGetWorkingTreeDiffRpc, // project working-tree diff feature
   WsTerminalOpenRpc,
   WsTerminalWriteRpc,
   WsTerminalResizeRpc,

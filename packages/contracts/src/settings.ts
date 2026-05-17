@@ -121,9 +121,7 @@ export const ClientSettingsSchema = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TERMINAL_LAYOUT)),
   ),
   terminalTabsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  colorScheme: ColorScheme.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_COLOR_SCHEME)),
-  ),
+  colorScheme: ColorScheme.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_COLOR_SCHEME))),
 });
 export type ClientSettings = typeof ClientSettingsSchema.Type;
 
