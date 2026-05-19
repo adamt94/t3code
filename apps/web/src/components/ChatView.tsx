@@ -90,6 +90,7 @@ import {
   DEFAULT_RUNTIME_MODE,
   DEFAULT_THREAD_TERMINAL_ID,
   LAZYGIT_TERMINAL_ID,
+  DEFAULT_THREAD_TERMINAL_WIDTH,
   MAX_TERMINALS_PER_GROUP,
   type ChatMessage,
   type SessionPhase,
@@ -107,7 +108,7 @@ import { BranchToolbar } from "./BranchToolbar";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import PlanSidebar from "./PlanSidebar";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
-import { ChevronDownIcon, TriangleAlertIcon, WifiOffIcon } from "lucide-react";
+import { ChevronDownIcon, TriangleAlertIcon, WifiOffIcon, XIcon } from "lucide-react";
 import { cn, randomUUID } from "~/lib/utils";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { decodeProjectScriptKeybindingRule } from "~/lib/projectScriptKeybindings";
@@ -431,6 +432,17 @@ function useLocalDispatchState(input: {
   };
 }
 
+const MIN_FLOATING_TERMINAL_WIDTH = 400;
+const MAX_FLOATING_TERMINAL_WIDTH_RATIO = 0.97;
+
+function clampFloatingTerminalWidth(w: number): number {
+  if (typeof window === "undefined") return DEFAULT_THREAD_TERMINAL_WIDTH;
+  return Math.min(
+    Math.max(Math.round(w), MIN_FLOATING_TERMINAL_WIDTH),
+    Math.floor(window.innerWidth * MAX_FLOATING_TERMINAL_WIDTH_RATIO),
+  );
+}
+
 interface PersistentThreadTerminalDrawerProps {
   threadRef: { environmentId: EnvironmentId; threadId: ThreadId };
   threadId: ThreadId;
@@ -478,6 +490,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
     selectThreadTerminalState(state.terminalStateByThreadKey, threadRef),
   );
   const storeSetTerminalHeight = useTerminalStateStore((state) => state.setTerminalHeight);
+  const storeSetTerminalWidth = useTerminalStateStore((state) => state.setTerminalWidth);
   const storeSplitTerminal = useTerminalStateStore((state) => state.splitTerminal);
   const storeNewTerminal = useTerminalStateStore((state) => state.newTerminal);
   const storeSetActiveTerminal = useTerminalStateStore((state) => state.setActiveTerminal);
@@ -485,6 +498,19 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
   const storeSetTerminalOpen = useTerminalStateStore((state) => state.setTerminalOpen);
   const [localFocusRequestId, setLocalFocusRequestId] = useState(0);
   const floatingTerminalTitleId = useId();
+
+  const [floatingWidth, setFloatingWidth] = useState(() =>
+    clampFloatingTerminalWidth(terminalState.terminalWidth),
+  );
+  const floatingWidthRef = useRef(floatingWidth);
+  const widthResizeStateRef = useRef<{
+    pointerId: number;
+    side: "left" | "right";
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+  const didWidthResizeDuringDragRef = useRef(false);
+
   const worktreePath = serverThread?.worktreePath ?? draftThread?.worktreePath ?? null;
   const effectiveWorktreePath = useMemo(() => {
     if (launchContext !== null) {
@@ -526,6 +552,87 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
       storeSetTerminalHeight(threadRef, height);
     },
     [storeSetTerminalHeight, threadRef],
+  );
+
+  const setTerminalWidth = useCallback(
+    (width: number) => {
+      storeSetTerminalWidth(threadRef, width);
+    },
+    [storeSetTerminalWidth, threadRef],
+  );
+
+  useEffect(() => {
+    floatingWidthRef.current = floatingWidth;
+  }, [floatingWidth]);
+
+  useEffect(() => {
+    if (widthResizeStateRef.current) return;
+    const clamped = clampFloatingTerminalWidth(terminalState.terminalWidth);
+    floatingWidthRef.current = clamped;
+    setFloatingWidth(clamped);
+  }, [terminalState.terminalWidth, threadId]);
+
+  const handleWidthResizePointerDownLeft = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      didWidthResizeDuringDragRef.current = false;
+      widthResizeStateRef.current = {
+        pointerId: event.pointerId,
+        side: "left",
+        startX: event.clientX,
+        startWidth: floatingWidthRef.current,
+      };
+    },
+    [],
+  );
+
+  const handleWidthResizePointerDownRight = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      didWidthResizeDuringDragRef.current = false;
+      widthResizeStateRef.current = {
+        pointerId: event.pointerId,
+        side: "right",
+        startX: event.clientX,
+        startWidth: floatingWidthRef.current,
+      };
+    },
+    [],
+  );
+
+  const handleWidthResizePointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const state = widthResizeStateRef.current;
+      if (!state || state.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      const delta = event.clientX - state.startX;
+      const rawWidth =
+        state.side === "right" ? state.startWidth + delta : state.startWidth - delta;
+      const clamped = clampFloatingTerminalWidth(rawWidth);
+      if (clamped === floatingWidthRef.current) return;
+      didWidthResizeDuringDragRef.current = true;
+      floatingWidthRef.current = clamped;
+      setFloatingWidth(clamped);
+    },
+    [],
+  );
+
+  const handleWidthResizePointerEnd = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const state = widthResizeStateRef.current;
+      if (!state || state.pointerId !== event.pointerId) return;
+      widthResizeStateRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      if (!didWidthResizeDuringDragRef.current) return;
+      setTerminalWidth(floatingWidthRef.current);
+    },
+    [setTerminalWidth],
   );
 
   const splitTerminal = useCallback(() => {
@@ -627,8 +734,8 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
     return (
       <div
         className={cn(
-          "fixed inset-0 z-50 bg-black/32 [-webkit-app-region:no-drag]",
-          visible ? "grid grid-rows-[1fr_auto_3fr] justify-items-center p-4" : "hidden",
+          "fixed inset-0 z-50 bg-black/32 backdrop-blur-sm [-webkit-app-region:no-drag]",
+          visible ? "flex items-center justify-center p-3" : "hidden",
         )}
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) {
@@ -640,8 +747,25 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
           role="dialog"
           aria-modal="true"
           aria-labelledby={floatingTerminalTitleId}
-          className="row-start-2 w-[min(96vw,72rem)] max-w-[min(96vw,72rem)] overflow-hidden rounded-lg border bg-background p-0 shadow-xl"
+          className="relative overflow-hidden rounded-lg border bg-background p-0 shadow-xl"
+          style={{ width: `${floatingWidth}px` }}
         >
+          {/* Left resize handle */}
+          <div
+            className="absolute inset-y-0 left-0 z-20 w-1.5 cursor-col-resize"
+            onPointerDown={handleWidthResizePointerDownLeft}
+            onPointerMove={handleWidthResizePointerMove}
+            onPointerUp={handleWidthResizePointerEnd}
+            onPointerCancel={handleWidthResizePointerEnd}
+          />
+          {/* Right resize handle */}
+          <div
+            className="absolute inset-y-0 right-0 z-20 w-1.5 cursor-col-resize"
+            onPointerDown={handleWidthResizePointerDownRight}
+            onPointerMove={handleWidthResizePointerMove}
+            onPointerUp={handleWidthResizePointerEnd}
+            onPointerCancel={handleWidthResizePointerEnd}
+          />
           {drawer}
         </div>
       </div>

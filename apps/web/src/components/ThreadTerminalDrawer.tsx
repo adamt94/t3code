@@ -55,15 +55,16 @@ import { readLocalApi } from "~/localApi";
 import { selectTerminalEventEntries, useTerminalStateStore } from "../terminalStateStore";
 
 const MIN_DRAWER_HEIGHT = 180;
-const MAX_DRAWER_HEIGHT_RATIO = 0.75;
+const DEFAULT_MAX_DRAWER_HEIGHT_RATIO = 0.75;
+const FLOATING_MAX_DRAWER_HEIGHT_RATIO = 0.92;
 const MULTI_CLICK_SELECTION_ACTION_DELAY_MS = 260;
 
-function maxDrawerHeight(maxHeightRatio = MAX_DRAWER_HEIGHT_RATIO): number {
+function maxDrawerHeight(maxHeightRatio = DEFAULT_MAX_DRAWER_HEIGHT_RATIO): number {
   if (typeof window === "undefined") return DEFAULT_THREAD_TERMINAL_HEIGHT;
   return Math.max(MIN_DRAWER_HEIGHT, Math.floor(window.innerHeight * maxHeightRatio));
 }
 
-function clampDrawerHeight(height: number, maxHeightRatio = MAX_DRAWER_HEIGHT_RATIO): number {
+function clampDrawerHeight(height: number, maxHeightRatio = DEFAULT_MAX_DRAWER_HEIGHT_RATIO): number {
   const safeHeight = Number.isFinite(height) ? height : DEFAULT_THREAD_TERMINAL_HEIGHT;
   const maxHeight = maxDrawerHeight(maxHeightRatio);
   return Math.min(Math.max(Math.round(safeHeight), MIN_DRAWER_HEIGHT), maxHeight);
@@ -934,7 +935,7 @@ export default function ThreadTerminalDrawer({
   controlsEnabled = true,
   initialCommand,
   onInitialCommandSent,
-  maxHeightRatio = MAX_DRAWER_HEIGHT_RATIO,
+  maxHeightRatio = layout === "floating" ? FLOATING_MAX_DRAWER_HEIGHT_RATIO : DEFAULT_MAX_DRAWER_HEIGHT_RATIO,
   surfaceTitle = "Terminal",
   surfaceTitleId,
   onCloseSurface,

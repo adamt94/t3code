@@ -107,6 +107,7 @@ const TERMINAL_LAYOUT_LABELS = {
 
 const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("codex");
 
+
 function withoutProviderInstanceKey<V>(
   record: Readonly<Record<ProviderInstanceId, V>> | undefined,
   key: ProviderInstanceId,
@@ -454,6 +455,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.terminalLayout,
       settings.terminalTabsEnabled,
       settings.sidebarThreadPreviewCount,
+      settings.terminalLayout,
       settings.timestampFormat,
       theme,
     ],

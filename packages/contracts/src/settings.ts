@@ -64,6 +64,7 @@ const TerminalLayoutSetting = Schema.Union([TerminalLayout, Schema.Literal("tabs
   ),
 );
 
+
 export const ClientSettingsSchema = Schema.Struct({
   autoOpenPlanSidebar: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   confirmThreadArchive: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),

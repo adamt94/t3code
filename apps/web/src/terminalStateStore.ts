@@ -13,6 +13,7 @@ import { resolveStorage } from "./lib/storage";
 import { terminalRunningSubprocessFromEvent } from "./terminalActivity";
 import {
   DEFAULT_THREAD_TERMINAL_HEIGHT,
+  DEFAULT_THREAD_TERMINAL_WIDTH,
   DEFAULT_THREAD_TERMINAL_ID,
   LAZYGIT_TERMINAL_ID,
   MAX_TERMINALS_PER_GROUP,
@@ -22,6 +23,7 @@ import {
 interface ThreadTerminalState {
   terminalOpen: boolean;
   terminalHeight: number;
+  terminalWidth: number;
   terminalIds: string[];
   runningTerminalIds: string[];
   activeTerminalId: string;
@@ -192,6 +194,7 @@ function threadTerminalStateEqual(left: ThreadTerminalState, right: ThreadTermin
   return (
     left.terminalOpen === right.terminalOpen &&
     left.terminalHeight === right.terminalHeight &&
+    left.terminalWidth === right.terminalWidth &&
     left.activeTerminalId === right.activeTerminalId &&
     left.activeTerminalGroupId === right.activeTerminalGroupId &&
     arraysEqual(left.terminalIds, right.terminalIds) &&
@@ -203,6 +206,7 @@ function threadTerminalStateEqual(left: ThreadTerminalState, right: ThreadTermin
 const DEFAULT_THREAD_TERMINAL_STATE: ThreadTerminalState = Object.freeze({
   terminalOpen: false,
   terminalHeight: DEFAULT_THREAD_TERMINAL_HEIGHT,
+  terminalWidth: DEFAULT_THREAD_TERMINAL_WIDTH,
   terminalIds: [DEFAULT_THREAD_TERMINAL_ID],
   runningTerminalIds: [],
   activeTerminalId: DEFAULT_THREAD_TERMINAL_ID,
@@ -250,6 +254,10 @@ function normalizeThreadTerminalState(state: ThreadTerminalState): ThreadTermina
       Number.isFinite(state.terminalHeight) && state.terminalHeight > 0
         ? state.terminalHeight
         : DEFAULT_THREAD_TERMINAL_HEIGHT,
+    terminalWidth:
+      Number.isFinite(state.terminalWidth) && state.terminalWidth > 0
+        ? state.terminalWidth
+        : DEFAULT_THREAD_TERMINAL_WIDTH,
     terminalIds: nextTerminalIds,
     runningTerminalIds,
     activeTerminalId,
@@ -428,6 +436,14 @@ function setThreadTerminalHeight(state: ThreadTerminalState, height: number): Th
   return { ...normalized, terminalHeight: height };
 }
 
+function setThreadTerminalWidth(state: ThreadTerminalState, width: number): ThreadTerminalState {
+  const normalized = normalizeThreadTerminalState(state);
+  if (!Number.isFinite(width) || width <= 0 || normalized.terminalWidth === width) {
+    return normalized;
+  }
+  return { ...normalized, terminalWidth: width };
+}
+
 function splitThreadTerminal(state: ThreadTerminalState, terminalId: string): ThreadTerminalState {
   return upsertTerminalIntoGroups(state, terminalId, "split");
 }
@@ -494,6 +510,7 @@ function closeThreadTerminal(state: ThreadTerminalState, terminalId: string): Th
   return normalizeThreadTerminalState({
     terminalOpen: normalized.terminalOpen,
     terminalHeight: normalized.terminalHeight,
+    terminalWidth: normalized.terminalWidth,
     terminalIds: remainingTerminalIds,
     runningTerminalIds: normalized.runningTerminalIds.filter((id) => id !== terminalId),
     activeTerminalId: nextActiveTerminalId,
@@ -586,6 +603,7 @@ interface TerminalStateStoreState {
   nextTerminalEventId: number;
   setTerminalOpen: (threadRef: ScopedThreadRef, open: boolean) => void;
   setTerminalHeight: (threadRef: ScopedThreadRef, height: number) => void;
+  setTerminalWidth: (threadRef: ScopedThreadRef, width: number) => void;
   splitTerminal: (threadRef: ScopedThreadRef, terminalId: string) => void;
   newTerminal: (threadRef: ScopedThreadRef, terminalId: string) => void;
   ensureTerminal: (
@@ -643,6 +661,8 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
           updateTerminal(threadRef, (state) => setThreadTerminalOpen(state, open)),
         setTerminalHeight: (threadRef, height) =>
           updateTerminal(threadRef, (state) => setThreadTerminalHeight(state, height)),
+        setTerminalWidth: (threadRef, width) =>
+          updateTerminal(threadRef, (state) => setThreadTerminalWidth(state, width)),
         splitTerminal: (threadRef, terminalId) =>
           updateTerminal(threadRef, (state) => splitThreadTerminal(state, terminalId)),
         newTerminal: (threadRef, terminalId) =>
